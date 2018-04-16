@@ -33,9 +33,27 @@ void error_handling(char* msg)
 	return;
 }
 
-char* sendToServer(char* msg)
+void setToServer(char* msg, int* val)
 {
-	int str_len;
+	char setMsg[BUF_SIZE];
+	char buf[4];
+	sprintf(buf,"%d",val[0]);//x
+	strncat(msg,buf,4);
+	strncat(msg,",",1);
+	sprintf(buf,"%d",val[1]);//y
+	strncat(msg,buf,4);
+	strncat(msg,",",1);
+	sprintf(buf,"%d",val[2]);//z
+	strncat(msg,buf,4);
+	strncat(msg,")\n",2);
+	printf("%s",msg);
+	
+	write(sockfd,msg,strlen(msg));
+}
+
+char* getToServer(char* msg)
+{
+	int str_len=0;
 	char res[BUF_SIZE]={0,};
 	write(sockfd,msg,strlen(msg));
 	str_len = read(sockfd,res,BUF_SIZE -1);
@@ -43,29 +61,56 @@ char* sendToServer(char* msg)
 	return res;
 }
 
-int movePlayer(char* msg)
+void movePlayer(char* msg_p, int move)
 {
-	int i;
+	int i,j;
 	int crt=0; //crt == 0 is x , crt == 1 is y, and 3 is z
 	int pos[3]={0,}; //x,y,z
-	char temp[100]={0,};
+	char msg_arr[100]={0,};
 	char val[10]={0,};
+	int real_val[3];
 	char check[2];
-	strcpy((char*)temp,msg);
-	for(i=0; temp[i] != '\0'; i++)
+	char msgs[BUF_SIZE];
+	char buf[4];
+	strcpy((char*)msg_arr,msg_p);
+ 	for(i=0; msg_arr[i] != '\0'; i++)
+	  {
+		  strncat(val,&msg_arr[i],1);
+		  check[0]=msg_arr[i];
+		  check[1]='\0';
+		  if(strcmp(check,",") == 0)
+		   {
+		     real_val[crt]=atoi(val);
+			   crt++;
+			   val[0]='\0';
+			 }
+		 }
+  real_val[crt]=atoi(val);
+	switch(move)
 	{
-		strncat(val,&temp[i],1);
-		check[0]=temp[i];
-		check[1]='\0';
-		if(strcmp(check,",") == 0)
-			{
-				pos[crt]=atoi(val);
-				crt++;
-				val[0]='\0';
-			}
+		case UP:
+			strcpy(msgs,"player.setTile(");
+			real_val[2]++;
+			setToServer(msgs,real_val);
+			break;
+		case DOWN:
+			strcpy(msgs,"player.setTile(");
+			real_val[2]--;
+			setToServer(msgs,real_val);
+			break;
+		case LEFT:
+			strcpy(msgs,"player.setTile(");
+			real_val[0]++;
+			setToServer(msgs,real_val);
+			break;
+		case RIGHT:
+			strcpy(msgs,"player.setTile(");
+			real_val[0]--;
+			setToServer(msgs,real_val);
+			break;
+		default:
+			break;
 	}
-	pos[crt]=atoi(val);
-	return pos[2];
 }
 
 int main(int argc, char* argv[])
@@ -74,7 +119,6 @@ int main(int argc, char* argv[])
 	struct sockaddr_in addr;
 	int key;	//input
 	char* res;//response from Server
-	int tempx=0;
 	if(argc !=2){
 		printf("Usage : %s <IP> \n", argv[0]);
 		exit(1);
@@ -97,20 +141,35 @@ while(1){
 		{
 			case GET_TILE:
 		 		strncpy(message,"player.getTile()\n",BUF_SIZE);
-				res=sendToServer(message);
+				res=getToServer(message);
 				break;
 			case GET_POS:
 		 		strncpy(message,"player.getPos()\n",BUF_SIZE);
-				res=sendToServer(message);
+				res=getToServer(message);
 				break;
 			case UP:
 		 		strncpy(message,"player.getTile()\n",BUF_SIZE);
-				res=sendToServer(message);
-				tempx=movePlayer(res);
+				res=getToServer(message);
+				movePlayer(res,key);
+				break;
+			case DOWN:
+		 		strncpy(message,"player.getTile()\n",BUF_SIZE);
+				res=getToServer(message);
+				movePlayer(res,key);
+				break;
+			case LEFT:
+		 		strncpy(message,"player.getTile()\n",BUF_SIZE);
+				res=getToServer(message);
+				movePlayer(res,key);
+				break;
+			case RIGHT:
+		 		strncpy(message,"player.getTile()\n",BUF_SIZE);
+				res=getToServer(message);
+				movePlayer(res,key);
 				break;
 			case GET_BLOCK:
 		 		strncpy(message,"world.getBlock()\n",BUF_SIZE);
-				res=sendToServer(message);
+				res=getToServer(message);
 				break;
 			default:
 			//  message="0";
@@ -121,7 +180,6 @@ while(1){
   //if(strcmp(message,"q\n") ==0 || strcmp(message,"Q\n") == 0) break;
 
 	printf("Message from server : %s", res);
-	printf("X : %d\n",tempx);
   }
 	close(sockfd);
 	return 0;

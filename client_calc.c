@@ -31,7 +31,6 @@ int main(int argc, char* argv[])
 	int i,j;
 	int pp;			//pp=packet pointer
 	float result;		//recv
-	int* ptr;
 	int op=0;
 
 	while(1){
@@ -46,7 +45,6 @@ int main(int argc, char* argv[])
 		{
 			printf("Operand %d : ",i+1);
 			scanf("%d",&real_op);
-			ptr=(int*)&op_list[lp];
 			for(j=0;j<4;j++)
 			{
 				op=real_op>>8*j;

@@ -11,7 +11,7 @@ int main()
 	sockfd = socket(AF_INET, SOCK_STREAM,0);
 	
 addr.sin_family= AF_INET;
-addr.sin_port = htons(13579);
+addr.sin_port = htons(9000);
 inet_aton("127.0.0.1",&addr.sin_addr);
 memset(&(addr.sin_zero),0,8);
 

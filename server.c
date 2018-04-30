@@ -10,7 +10,7 @@ int main()
 	sockfd = socket(AF_INET, SOCK_STREAM,0);
 	
 addr.sin_family= AF_INET;
-addr.sin_port = htons(13579);
+addr.sin_port = htons(9001);
 addr.sin_addr.s_addr = htonl(INADDR_ANY);
 memset(&(addr.sin_zero),0,8);
 

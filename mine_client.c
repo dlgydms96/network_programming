@@ -16,12 +16,12 @@
 #define UP 119
 #define SET_BLOCK 101
 #define GET_BLOCK 113
-#define SET_STRUCT 114
+#define BALL 55
+#define PYRAMID 56
+#define TRAP 57
+
 #define CAM_NORMAL 49
 #define CAM_FOLLOW 50
-/*#define SET_TILE 116
-#define SET_POS 112
-#define SET_BLOCK 98*/
 
 int sockfd;//socket descriptor
 int block=0;//block id
@@ -125,9 +125,13 @@ void movePlayer(int move)
 	char val[10]={0,};
 	char check[2];
 	char msgs[BUF_SIZE];
+	char msg[BUF_SIZE];
 	char buf[4];
 	int movflag;//0 = go, 1 = jump , -1= invalid move
-
+	int down_blk;//user check blk in two pixel up/down
+	int up_blk;
+	char* res;
+	int blkcheck[3];
 	getPose();
 	strcpy(msgs,"player.setTile(");
 	
@@ -135,7 +139,7 @@ void movePlayer(int move)
 	{
 		case UP:
 			pos[2]++;
-		break;
+			break;
 		case DOWN:
 			pos[2]--;
 			break;
@@ -148,20 +152,24 @@ void movePlayer(int move)
 		default:
 			break;
 	}
+	for(i=0;i<3;i++) blkcheck[i]=pos[i];
+	strcpy(msg,"world.getBlock(");
+	res= getToServer(msg,blkcheck,3);
+	down_blk=atoi(res);
+	blkcheck[1]++;
+	strcpy(msg,"world.getBlock(");
+	res= getToServer(msg,blkcheck,3);
+	up_blk=atoi(res);
+
   movflag=getHeight(pos);
 	if(movflag == 1) pos[1]++;
 	if(movflag != -1) setToServer(msgs,pos,3);
-	
+	else if((down_blk||up_blk)==0) setToServer(msgs,pos,3);
 }
 
-void getBlock()
+int getBlock()
 {
-	int crt=0; //crt == 0 is x , crt == 1 is y, and 3 is z
-	char msg_arr[100]={0,};
-	char val[10]={0,};
-	char check[2];
 	char* res;
-	int i;
   char msgs[BUF_SIZE];
 	
 	getPose();
@@ -171,6 +179,7 @@ void getBlock()
 	res= getToServer(msgs,pos,3);
 	block=atoi(res);
 	printf("get block number %d\n",block);
+	return block;
 }
 
 void setBlock()
@@ -184,81 +193,6 @@ void setBlock()
 	block_pos[3]=block; //block id
 	strcpy(msgs,"world.setBlock(");
 	setToServer(msgs,block_pos,4);
-}
-
-void setStruct()
-{
-	int x=0,y=0,z=0;
-	int i,j,k;
-	int block_pos[4];
-	int start_pos[3];
-	char msgs[BUF_SIZE];
-	int r=10;
-	getPose();
-	for(i=0;i<3;i++) start_pos[i]=pos[i];
-	start_pos[2]+=10;
-	start_pos[1]+=10;
-	start_pos[0]+=10;
-	for(x=0;x<r*r;x++)
-	{
-		for(y=0;y<r*r;y++)
-		{
-			for(z=0;z<r*r;z++)
-			{
-				if(((x*x)+(y*y)+(z*z))<=(r*r))
-				{
-					block_pos[0]=start_pos[0]-x;
-					block_pos[1]=start_pos[1]+y;
-					block_pos[2]=start_pos[2]-z;
-					block_pos[3]=2;
-					strcpy(msgs,"world.setBlock(");
-					setToServer(msgs,block_pos,4);
-					block_pos[0]=start_pos[0]-x;
-					block_pos[1]=start_pos[1]-y;
-					block_pos[2]=start_pos[2]+z;
-					block_pos[3]=2;
-					strcpy(msgs,"world.setBlock(");
-					setToServer(msgs,block_pos,4);
-					block_pos[0]=start_pos[0]-x;
-					block_pos[1]=start_pos[1]-y;
-					block_pos[2]=start_pos[2]-z;
-					block_pos[3]=2;
-					strcpy(msgs,"world.setBlock(");
-					setToServer(msgs,block_pos,4);
-					block_pos[0]=start_pos[0]+x;
-					block_pos[1]=start_pos[1]-y;
-					block_pos[2]=start_pos[2]-z;
-					block_pos[3]=2;
-					strcpy(msgs,"world.setBlock(");
-					setToServer(msgs,block_pos,4);
-					block_pos[0]=start_pos[0]+x;
-					block_pos[1]=start_pos[1]+y;
-					block_pos[2]=start_pos[2]-z;
-					block_pos[3]=2;
-					strcpy(msgs,"world.setBlock(");
-					setToServer(msgs,block_pos,4);
-					block_pos[0]=start_pos[0]+x;
-					block_pos[1]=start_pos[1]-y;
-					block_pos[2]=start_pos[2]+z;
-					block_pos[3]=2;
-					strcpy(msgs,"world.setBlock(");
-					setToServer(msgs,block_pos,4);
-					block_pos[0]=start_pos[0]-x;
-					block_pos[1]=start_pos[1]+y;
-					block_pos[2]=start_pos[2]+z;
-					block_pos[3]=2;
-					strcpy(msgs,"world.setBlock(");
-					setToServer(msgs,block_pos,4);
-					block_pos[0]=x+start_pos[0];
-					block_pos[1]=y+start_pos[1];
-					block_pos[2]=z+start_pos[2];
-					block_pos[3]=2;
-					strcpy(msgs,"world.setBlock(");
-					setToServer(msgs,block_pos,4);
-				}
-			}
-		}
-	}
 }
 
 int main(int argc, char* argv[])
@@ -297,8 +231,14 @@ int main(int argc, char* argv[])
 			case SET_BLOCK:
 				setBlock();
 				break;
-			case SET_STRUCT:
-				setStruct();
+			case BALL:
+				setBall();
+				break;
+			case PYRAMID:
+				setPyramid();
+				break;
+			case TRAP:
+				setTrap();
 				break;
 			case CAM_NORMAL:
 				setToServer("camera.mode.setNormal()\n",NULL,0);

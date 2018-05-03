@@ -24,16 +24,6 @@ int main(int argc, char* argv[])
 	addr.sin_port = htons(atoi(argv[1]));
 	addr.sin_addr.s_addr = htonl(INADDR_ANY);
 	memset(&(addr.sin_zero),0,8);
-
-	if(bind(sockfd,(struct sockaddr *) &addr, sizeof(addr)) ==-1){
-		perror("bind");
-		return 0;
-	}
-	if(listen(sockfd,5)<0){
-		perror("listen");
-		return 0;
-	}
-
 #define BUF_SIZE 100
 	int str_len;
 	int newfd;
@@ -46,6 +36,7 @@ int main(int argc, char* argv[])
 	int max_fd=0;
 	int result;
 	int i;
+	int res;
 	int sin_size=sizeof(client_addr);
 	FD_ZERO(&readfds);
 	FD_SET(sockfd,&readfds);
@@ -53,28 +44,28 @@ int main(int argc, char* argv[])
 
 	addr_len = sizeof(client_addr);
 
+	res=connect(sockfd,(* struct sock_addr)&addr,sin_size);
 	while(1){
 		readtemp= readfds;
 		timeout.tv_sec = 5;
 		timeout.tv_usec = 0;
-		result = select(max_fd+1, &readtemp, NULL, NULL, &timeout);
+		result = select(max_fd, &readtemp, NULL, NULL, &timeout);
 		if(result == -1){
 			perror("select");
 			break;
 		}
 		else if(result ==0){
-		//	printf("Timeout\n");
+			printf("Timeout\n");
 			continue;
 		}
 		for(i=0;i<=max_fd;i++){
 			if(FD_ISSET(i, &readtemp)){
 				if(i==sockfd){
-					newfd = accept(i, (struct sockaddr*)&client_addr, &sin_size);
-					if(newfd == -1){
-						perror("accept");
+					if(res == -1){
+						perror("connect");
 						exit(0);
 					}
-					printf("Connected client: %d\n",newfd);
+					printf("Connected server");
 					FD_SET(newfd, &readfds);
 					if(max_fd < newfd) max_fd =newfd;
 				}
@@ -87,8 +78,9 @@ int main(int argc, char* argv[])
 					}
 					else 
 					{
+						write(i,message,str_len);
 						message[i]=0;
-						printf("%s\n",message);
+						printf("msg: %s\n",message);
 					}
 				}
 			}

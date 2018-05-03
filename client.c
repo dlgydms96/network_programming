@@ -3,7 +3,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
-int main()
+int main(int argc, char* argv[])
 {
 	int sockfd;
 	struct sockaddr_in addr;
@@ -11,7 +11,7 @@ int main()
 	sockfd = socket(AF_INET, SOCK_STREAM,0);
 	
 addr.sin_family= AF_INET;
-addr.sin_port = htons(13579);
+addr.sin_port = htons(atoi(argv[1]));
 inet_aton("127.0.0.1",&addr.sin_addr);
 memset(&(addr.sin_zero),0,8);
 

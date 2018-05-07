@@ -17,26 +17,14 @@ int main()
 
 	addr.sin_family=AF_INET;
 	addr.sin_port=htons(9000);
-	addr.sin_addr.s_addr=htonl(INADDR_ANY);
+	inet_aton("127.0.0.1",&addr.sin_addr);
 	memset(&addr.sin_zero,0,8);
-	if(bind(sockfd, (struct sockaddr*)&addr, sizeof(addr))==-1)
-	{
-		perror("bind");
-		return 0;
-	}
-
-	if(listen(sockfd,5)<0)
-	{
-		perror("listen");
-		return 0;
-	}
-
 	struct timeval timeout;
 	fd_set readfds, readtemp;
 	int max_fd=0;
 	int result;
 	int i;
-	int newfd;
+	int new;
 	char message[BUF_SIZE];
 	int str_len;
 	struct sockaddr_in client_addr;
@@ -46,8 +34,10 @@ int main()
 
 	FD_ZERO(&readfds);
 	FD_SET(sockfd, &readfds);
-	FD_SET(0, &readfds);
+	FD_SET(0, &readfds);//check stdin
 	max_fd = sockfd;
+
+	new=connect(sockfd,(struct sockaddr*)&addr, sizeof(addr));
 
 	while(1){
 		readtemp= readfds;
@@ -69,34 +59,21 @@ int main()
 
 			if(FD_ISSET(i, &readtemp)){
 				if(i==sockfd){
-					newfd=accept(i,(struct sockaddr*)&client_addr, &addr_len);
-					if(newfd==-1){
-						perror("accept");
-						exit(0);
-					}
-					printf("Connected client: %d\n", newfd);
-					FD_SET(newfd, &readfds);
-					if(max_fd<newfd)
-						max_fd= newfd;
-				}
-				else if(i==0)
-				{
-					fgets(message,BUF_SIZE,stdin);
-					str_len=write(newfd,message,strlen(message));
-				}
-
-				else{
 					str_len = read(i,message,BUF_SIZE);
 					if(str_len==0){
 						FD_CLR(i, &readfds);
 						close(i);
-						printf("Closed client: %d\n",i);
+						printf("Closed\n");
 					}
 					else{
 						message[str_len]='\0';
 						printf("%s",message);
-						//write(i,message,str_len);
 					}
+				}
+				else if(i==0)
+				{
+					fgets(message,BUF_SIZE,stdin);
+					write(sockfd,message,strlen(message));
 				}
 			}
 		}

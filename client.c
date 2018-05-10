@@ -18,11 +18,19 @@ memset(&(addr.sin_zero),0,8);
 connect(sockfd, (struct sockaddr*)&addr,sizeof(addr));
 
 #define BUF_SIZE 10
+#define MAX_EVENTS 10
+
 int str_len;
 int newfd;
 char message[BUF_SIZE];
 struct sockaddr_in client_addr;
 int addr_len;
+int event_cnt;
+int epfd;
+struct epoll_event ev, evs[MAX_EVENTS];
+
+epfd=epoll_create1(0);
+ev.events
 
 while(1){
 	printf("Input message(Q to quit): ");

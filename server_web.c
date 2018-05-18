@@ -1,4 +1,5 @@
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -12,7 +13,19 @@
 #define BUF_SIZE 1000
 void* http_req(void *sock);
 void http_res(int type);
-int parseMsg(char *file_msg);
+int parseMsg(char *req_msg);
+char name[10]={0,};
+static size_t file_size (const char * file_name) 
+{
+	struct stat sb; 
+	if (stat (file_name, & sb) != 0)
+	{ 
+		fprintf (stderr, "'stat' failed for '%s': %s.\n", file_name, strerror (errno));
+		exit (EXIT_FAILURE); 
+	}
+	return sb.st_size; 
+} 
+
 void zombie_handler()
 {
 	int status;
@@ -44,6 +57,8 @@ int main()
 	}
 
 	int newfd;
+	int fd[10];	//client's port array
+	int i=0;
 	struct sockaddr_in client_addr;
 	int addr_len;
 	struct sigaction act;
@@ -69,8 +84,9 @@ int main()
 			return 0;
 		}
 		else printf("Connection Established\n");
-
-		pthread_create(&t_id, NULL,(void*) http_req,(void*) &newfd);
+		if(i==10) i=0;
+		fd[i++]=newfd;
+		pthread_create(&t_id, NULL,(void*) http_req,(void*) &fd[i-1]);
 		pthread_detach(t_id);
 	}
 	close(sockfd);
@@ -85,9 +101,15 @@ void* http_req(void *sock)
 	int i;
 	char req_msg[30];
 	char res_msg[BUF_SIZE];
-	int type;
+	int ntype;
 	int filefd;
-	while((str_len = read(sockfd,message,BUF_SIZE))!=0){
+	int filesize;
+	char size[4];
+
+	while(1)
+	{
+		str_len = read(sockfd,message,BUF_SIZE);
+		if(str_len==0)	break;
 		printf("Recv %d bytes\n",str_len);
 		printf("%s",message);
 		for(i=0; i<str_len; i++)
@@ -95,69 +117,95 @@ void* http_req(void *sock)
 			{
 				strncpy(req_msg,message,++i);
 				printf("%s",req_msg);
-				type=parseMsg(req_msg);
+				ntype=parseMsg(req_msg);
+				if(ntype == -1)
+					//error
 				printf("length:%d\n",strlen(req_msg));
 				break;
 			}
-		switch(type)
+		strcpy(res_msg,"HTTP/1.1 200 OK\r\n");
+		str_len=strlen(res_msg);
+		write(sockfd,res_msg,str_len);
+
+		switch(ntype)
 		{
 			case 0:
-				strcpy(res_msg,"HTTP/1.1 200 OK\r\n");
-				str_len=strlen(res_msg);
-				write(sockfd,res_msg,str_len);
-				strcpy(res_msg,"Content-Type: ");
-				strcat(res_msg,"index/html\r\n");
-				str_len=strlen(res_msg);
-				write(sockfd,res_msg,str_len);
-				strcpy(res_msg,"Content-Length: ");
-				strcat(res_msg,"163\r\n\r\n");
-				str_len=strlen(res_msg);
-				write(sockfd,res_msg,str_len);
+				strcpy(res_msg,"Content-Type: text/html\r\n");
+				break;
 
-				filefd=open("./index.html",O_RDONLY);
-				if(filefd==NULL)
-				{
-					printf("error");
-					return;
-				}
+			case 1:
+				strcpy(res_msg,"Content-Type: image/jpg\r\n");
+				break;
 
-				memset(file_buf,0x00,BUF_SIZE);
-				str_len=read(filefd,file_buf,BUF_SIZE);
-				write(sockfd,file_buf,str_len);
-				printf("%d", str_len);
+			case 2:
+				strcpy(res_msg,"Content-Type: image/png\r\n");
+				break;
+
+			default:
+				//	write(sockfd,"404 Not Found",str_len);
+				break;
+
 		}
+		str_len=strlen(res_msg);
+		write(sockfd,res_msg,str_len);
+
+		if(strcmp(name,"./")==0) strcpy(name,"./index.html");
+		filesize=file_size(name);
+		sprintf(size,"%d",filesize);
+		strcpy(res_msg,"Content-Length: ");
+		strcat(res_msg,size);
+		strcat(res_msg,"\r\n\r\n");
+		str_len=strlen(res_msg);
+		write(sockfd,res_msg,str_len);
+
+		filefd=open(name,O_RDONLY);
+		if(filefd==NULL)
+		{
+			printf("error");
+			return;
+		}
+
+		memset(file_buf,0x00,BUF_SIZE);
+		while((str_len=read(filefd,file_buf,BUF_SIZE))!=0)
+			write(sockfd,file_buf,str_len);
+
 	}
 	close(sockfd);
 }
 
 int parseMsg(char *req_msg)
 {
-	int i;
+	int i,j;
 	char file_msg[10]={0,};
 	int ntype=0;
-	char type[5]={0,};
 	int str_len;
+	char type[5]={0,};
+
+	memset(name,0x00,10);
+	strcpy(name,"./");
 	for(i=4;req_msg[i]!=' ';i++)
 		strncat(file_msg,&req_msg[i],1);	
 	printf("file: %s\n",file_msg);
-	for(i=0;i<strlen(file_msg);i++)
-		if(file_msg[i++]=='.')
-			strcpy(type,&file_msg[i]);
+	for(i=1;i<strlen(file_msg);i++)
+	{
+		if(file_msg[i]=='.') j=i+1;
+		strncat(name,&file_msg[i],1);
+	}
+	for(;j<strlen(file_msg);j++)
+		strncat(type,&file_msg[j],1);
+	printf("name: %s\n", name);
 	printf("type: %s\n", type);
 
-
-//write(newfd,message,str_len);
 	if(strcmp(type,"")==0 || strcmp(type,"html")==0)
-	ntype=0;
+		ntype=0;
 	else if(strcmp(type,"jpg")==0)
-	ntype=1;
+		ntype=1;
 	else if(strcmp(type,"png")==0)
-	ntype=2;
+		ntype=2;
 	else 
 	{
 		ntype =-1;
-		("Can't parse message\n");
+		printf("Can't parse message\n");
 	}
 	return ntype;
 }
-

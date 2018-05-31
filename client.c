@@ -25,12 +25,7 @@ int newfd;
 char message[BUF_SIZE];
 struct sockaddr_in client_addr;
 int addr_len;
-int event_cnt;
-int epfd;
-struct epoll_event ev, evs[MAX_EVENTS];
 
-epfd=epoll_create1(0);
-ev.events
 
 while(1){
 	printf("Input message(Q to quit): ");

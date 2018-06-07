@@ -11,6 +11,10 @@
 #include <string.h>
 #include <unistd.h>
 #define BUF_SIZE 1000
+
+#define BASE_DIR "./"
+#define DEFAULT_HTML "./index.html"
+
 void* http_req(void *sock);
 void http_res(int type);
 int parseMsg(char *req_msg);
@@ -21,7 +25,7 @@ static size_t file_size (const char * file_name)
 	if (stat (file_name, & sb) != 0)
 	{ 
 		fprintf (stderr, "'stat' failed for '%s': %s.\n", file_name, strerror (errno));
-		exit (EXIT_FAILURE); 
+		return 0;
 	}
 	return sb.st_size; 
 } 
@@ -91,7 +95,43 @@ int main()
 	}
 	close(sockfd);
 }
+void error_page(int s)
+{
+	int res_msg[BUF_SIZE];
+	int str_len;
+	int filesize;
+	char size[4];
+	int filefd;
+	int file_buf[BUF_SIZE];
 
+	strcpy(res_msg,"HTTP/1.1 404 Not Found\r\n");
+	str_len=strlen(res_msg);
+	write(s,res_msg,str_len);
+	strcpy(res_msg,"Content-Type: text/html\r\n");
+	str_len=strlen(res_msg);
+	write(s,res_msg,str_len);
+
+	strcpy(name,"./error.html");
+	filesize=file_size(name);
+	sprintf(size,"%d",filesize);
+	strcpy(res_msg,"Content-Length: ");
+	strcat(res_msg,size);
+	strcat(res_msg,"\r\n\r\n");
+	str_len=strlen(res_msg);
+	write(s,res_msg,str_len);
+
+	filefd=open(name,O_RDONLY);
+	if(filefd==NULL)
+	{
+		printf("error");
+		return;
+	}
+	memset(file_buf,0x00,BUF_SIZE);
+	while((str_len=read(filefd,file_buf,BUF_SIZE))!=0)
+	{
+		write(s,file_buf,str_len);
+	}
+}
 void* http_req(void *sock)
 {
 	int sockfd=*(int*)sock;
@@ -118,39 +158,23 @@ void* http_req(void *sock)
 				strncpy(req_msg,message,++i);
 				printf("%s",req_msg);
 				ntype=parseMsg(req_msg);
-				if(ntype == -1)
-					//error
+				if(ntype == -1);	//error
 				printf("length:%d\n",strlen(req_msg));
 				break;
 			}
+
 		strcpy(res_msg,"HTTP/1.1 200 OK\r\n");
 		str_len=strlen(res_msg);
 		write(sockfd,res_msg,str_len);
-
-		switch(ntype)
-		{
-			case 0:
-				strcpy(res_msg,"Content-Type: text/html\r\n");
-				break;
-
-			case 1:
-				strcpy(res_msg,"Content-Type: image/jpg\r\n");
-				break;
-
-			case 2:
-				strcpy(res_msg,"Content-Type: image/png\r\n");
-				break;
-
-			default:
-				//	write(sockfd,"404 Not Found",str_len);
-				break;
-
-		}
+		if(ntype == 0) strcpy(res_msg,"Content-Type: text/html\r\n");
+		else if(ntype ==1) strcpy(res_msg,"Content-Type: image/jpg\r\n");
+		else if(ntype == 2) strcpy(res_msg,"Content-Type: image/png\r\n");
 		str_len=strlen(res_msg);
 		write(sockfd,res_msg,str_len);
 
-		if(strcmp(name,"./")==0) strcpy(name,"./index.html");
-		filesize=file_size(name);
+		if(strcmp(name,BASE_DIR)==0) strcpy(name,DEFAULT_HTML);
+		if((filesize=file_size(name))==0)
+			error_page(sockfd);
 		sprintf(size,"%d",filesize);
 		strcpy(res_msg,"Content-Length: ");
 		strcat(res_msg,size);
@@ -164,11 +188,9 @@ void* http_req(void *sock)
 			printf("error");
 			return;
 		}
-
 		memset(file_buf,0x00,BUF_SIZE);
 		while((str_len=read(filefd,file_buf,BUF_SIZE))!=0)
 			write(sockfd,file_buf,str_len);
-
 	}
 	close(sockfd);
 }
@@ -182,7 +204,7 @@ int parseMsg(char *req_msg)
 	char type[5]={0,};
 
 	memset(name,0x00,10);
-	strcpy(name,"./");
+	strcpy(name,BASE_DIR);
 	for(i=4;req_msg[i]!=' ';i++)
 		strncat(file_msg,&req_msg[i],1);	
 	printf("file: %s\n",file_msg);
@@ -205,7 +227,7 @@ int parseMsg(char *req_msg)
 	else 
 	{
 		ntype =-1;
-		printf("Can't parse message\n");
+		printf("Can't parse message\n%d\n",ntype);
 	}
 	return ntype;
 }

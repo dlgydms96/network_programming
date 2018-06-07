@@ -11,7 +11,10 @@
 #define BUF_SIZE 10
 #define MAX_EVENTS 10
 
+pthread_mutex_t mutex;
+
 int sockfd;
+int num_client=0;
 
 void* thread_main(void* arg)
 {
@@ -31,6 +34,10 @@ void* thread_main(void* arg)
 		write(s,buf,size);
 		printf("Host: %s\n",buf);
 	}
+	pthread_mutex_lock(&mutex);
+	num_client--;
+	pthread_mutex_unlock(&mutex);
+
 	close(s);
 	pthread_exit(NULL);
 }
@@ -65,8 +72,13 @@ int main(int argc, char *argv[])
 	while(1){
 		newfd = accept(sockfd,(struct sockaddr*)&client_addr, &addr_len);
 
+		pthread_mutex_lock(&mutex);
+		num_client++;
+		pthread_mutex_unlock(&mutex);
+		printf("client number: %d\n",num_client);
 		arg = malloc(sizeof(int));
 		*(int *)arg = newfd;
+		
 		result=pthread_create(&t_id, NULL, thread_main,arg);
 		if(result != 0){
 			errno= result;

@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <sys/select.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 void zombie_handler()
 {
@@ -39,17 +40,20 @@ int main(int argc, char* argv[])
 	int res;
 	int sin_size=sizeof(client_addr);
 	FD_ZERO(&readfds);
+	FD_SET(0,&readfds);
+
 	FD_SET(sockfd,&readfds);
 	max_fd = sockfd;
 
 	addr_len = sizeof(client_addr);
 
-	res=connect(sockfd,(* struct sock_addr)&addr,sin_size);
+	res=connect(sockfd,(struct sockaddr*)&addr,sin_size);
 	while(1){
 		readtemp= readfds;
+
 		timeout.tv_sec = 5;
 		timeout.tv_usec = 0;
-		result = select(max_fd, &readtemp, NULL, NULL, &timeout);
+		result = select(max_fd+1, &readtemp, NULL, NULL, &timeout);
 		if(result == -1){
 			perror("select");
 			break;
@@ -58,18 +62,11 @@ int main(int argc, char* argv[])
 			printf("Timeout\n");
 			continue;
 		}
+
 		for(i=0;i<=max_fd;i++){
 			if(FD_ISSET(i, &readtemp)){
-				if(i==sockfd){
-					if(res == -1){
-						perror("connect");
-						exit(0);
-					}
-					printf("Connected server");
-					FD_SET(newfd, &readfds);
-					if(max_fd < newfd) max_fd =newfd;
-				}
-				else{
+				if(i==sockfd)
+				{
 					str_len = read(i,message,BUF_SIZE);
 					if(str_len ==0){
 						FD_CLR(i,&readfds);
@@ -78,10 +75,14 @@ int main(int argc, char* argv[])
 					}
 					else 
 					{
-						write(i,message,str_len);
-						message[i]=0;
-						printf("msg: %s\n",message);
+						message[str_len]='\0';
+						printf("msg: %s",message);
 					}
+				}
+				else if(i==0)
+				{
+					fgets(message,BUF_SIZE,stdin);
+					write(sockfd,message,strlen(message));
 				}
 			}
 		}

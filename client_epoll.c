@@ -39,7 +39,7 @@ int main()
 	epfd=epoll_create1(0);
 	ev.events = EPOLLIN;
 	ev.data.fd = 0;
-	epoll_ctl(epfd, EPOLL_CTL_ADD, sockfd, &ev);
+	epoll_ctl(epfd, EPOLL_CTL_ADD, 0, &ev);
 
 	ev1.events = EPOLLIN;
 	ev1.data.fd = sockfd;

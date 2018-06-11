@@ -56,7 +56,7 @@ int main()
 
 	ev1.events = EPOLLIN;
 	ev1.data.fd = 0;
-	epoll_ctl(epfd, EPOLL_CTL_ADD, sockfd, &ev1);
+	epoll_ctl(epfd, EPOLL_CTL_ADD, 0, &ev1);
 
 	while(1){
 	

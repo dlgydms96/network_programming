@@ -10,7 +10,7 @@
 #include <string.h>
 
 #define BUF_SIZE 100
-
+#define MAX_CLIENTS 3
 
 typedef struct clientInfo{
 	unsigned int IP;
@@ -18,11 +18,24 @@ typedef struct clientInfo{
 	unsigned int socket;
 }clientInfo;
 
-clientInfo client_arr[10];
+clientInfo client_arr[MAX_CLIENTS];
 int cltIdx=0;
 int sockfd;
 
-int getPeer(int s,char* buf)
+int subPeer(int s)
+{
+	for(int i=0;i<cltIdx;i++)
+	{
+		if(client_arr[i].socket==s)
+		{
+			for(int j=i;j<cltIdx;j++)
+				client_arr[j]=client_arr[j+1];
+		}
+	}
+	cltIdx--;
+}
+
+int addPeer(int s,char* buf)
 {
 	struct clientInfo client;
 	struct sockaddr_in addr;
@@ -37,9 +50,17 @@ int getPeer(int s,char* buf)
 	client.IP=addr.sin_addr.s_addr;
 	strcpy(client.name,buf);
 
-	client_arr[cltIdx++]=client;
-	printf("IP: %d , name: %s\n", client.IP,client.name);
-	return cltIdx-1;
+	if(cltIdx<MAX_CLIENTS){
+		client_arr[cltIdx++]=client;
+		printf("IP: %d , name: %s\n", client.IP,client.name);
+	}
+	else
+		{
+			printf("too many clients\n");
+			close(s);
+		}
+
+	return cltIdx;//client num
 }
 
 void* thread_main(void* arg)
@@ -68,7 +89,7 @@ void* thread_main(void* arg)
 		else if(type == 'c')
 		{
 			printf("cltIdx: %d\n",cltIdx);
-			cltNum=getPeer(s,buf);
+			cltNum=addPeer(s,buf);
 			strcpy(buf,"***client list***");
 			write(s,buf,strlen(buf));
 			for(int i=0;i<cltIdx;i++)
@@ -86,6 +107,7 @@ void* thread_main(void* arg)
 		printf("Host: %s, size: %d\n",buf,size);
 		memset(buf,0,BUF_SIZE);
 	}
+	subPeer(s);
 	close(s);
 	pthread_exit(NULL);
 }

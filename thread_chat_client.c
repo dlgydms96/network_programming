@@ -31,6 +31,7 @@ void* thread_send(void* arg)
 	
 	pthread_exit(NULL);
 }
+
 int main(int argc, char *argv[])
 {
 	pthread_t t_id;
@@ -65,4 +66,3 @@ int main(int argc, char *argv[])
 	close(sockfd);
 	return 0;
 }
-

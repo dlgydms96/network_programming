@@ -52,7 +52,7 @@ void* thread_main(void* arg)
 }
 int main(int argc, char *argv[])
 {
-	pthread_t t_id;
+	pthread_t t_id[5];
 	int arg=10;
 	int i;
 	char c;
@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
 	 }
 
 	for(i=0;i<5;i++){
-		result=pthread_create(&t_id, NULL, thread_main, NULL);
+		result=pthread_create(&t_id[i], NULL, thread_main, NULL);
 		if(result != 0){
 			errno= result;
 			perror("create");
@@ -92,4 +92,3 @@ int main(int argc, char *argv[])
 	close(sockfd);
 	return 0;
 }
-

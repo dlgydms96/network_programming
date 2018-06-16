@@ -14,10 +14,11 @@
 
 int sockfd;
 
-void ConnectToServer()
+void ConnectToServer(char* arg)
 {
 	char output[BUF_SIZE];
-	char name[10]="Name1";
+	char name[10];
+	strcpy(name,arg);
 	sprintf(output,"%d",strlen(name));
 	strcat(output,"c");
 	strcat(output,name);
@@ -28,25 +29,39 @@ void* thread_send(void* arg)
 {
 	int size;
 	char buf[BUF_SIZE];
-	char escape[10]="aa";
 	char output[BUF_SIZE];
-
-	ConnectToServer();
+	char name[10];
+	char header[3];
+	ConnectToServer((char*)arg);
 	while((size = read(0,buf,BUF_SIZE))>0){
+		strncpy(header,buf,3);
+		header[2]='\0';
+		printf("header: %s\n",header);
 		sprintf(output,"%d",size);
-		
-		strcat(output,"m");
-		////////////////////////////////////
-		buf[size-1]='\0';
-		if(strncmp(buf,escape,2) ==0){
-			shutdown(sockfd, SHUT_WR);
-			break;
+		if(strcmp(buf,"/l\n")==0)
+		{
+			sprintf(output,"%d",strlen("l"));
+			strcat(output,"l");
+			send(sockfd,output,strlen(output),0);
 		}
-		strcat(output,buf);
-		send(sockfd,output,strlen(output),0);
-		printf("Host: %s\n",output);
+		else if(strcmp(header,"/w")==0)
+		{
+			sprintf(output,"%d",strlen("w"));
+			strcat(output,"w");
+			////////////////////////////////////
+			buf[size-1]='\0';
+			strcat(output,&buf[3]);
+			send(sockfd,output,strlen(output),0);
+		}
+		else{
+			strcat(output,"m");
+			////////////////////////////////////
+			buf[size-1]='\0';
+			strcat(output,buf);
+			send(sockfd,output,strlen(output),0);
+			//printf("Host: %s\n",output);
+		}
 	}
-	
 	pthread_exit(NULL);
 }
 
@@ -59,16 +74,21 @@ int main(int argc, char *argv[])
 	char message[BUF_SIZE];
 	int size;
 
+	if(argc !=4)
+	{
+		printf("NOTE: filename <IP> <port> <client name>\n");
+		exit(0);
+	}
 	sockfd = socket(AF_INET, SOCK_STREAM,0);
 
 	addr.sin_family= AF_INET;
-	addr.sin_port = htons(atoi(argv[1]));
-	inet_aton("127.0.0.1",&addr.sin_addr);
+	addr.sin_port = htons(atoi(argv[2]));
+	inet_aton(argv[1],&addr.sin_addr);
 	memset(&(addr.sin_zero),0,8);
 	
 	connect(sockfd, (struct sockaddr*)&addr,sizeof(addr));
 
-	result=pthread_create(&t_id, NULL, thread_send,NULL);
+	result=pthread_create(&t_id, NULL, thread_send,argv[3]);
 	if(result != 0){
 		errno= result;
 		perror("create");
@@ -78,7 +98,7 @@ int main(int argc, char *argv[])
 
 	while((size =recv(sockfd, message, BUF_SIZE,0))>0){
 	message[size]='\0';
-	printf("PEER: %s\n", message);
+	printf("%s\n", message);
 	}
 
 	close(sockfd);

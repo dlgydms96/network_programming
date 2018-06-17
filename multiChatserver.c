@@ -18,6 +18,7 @@ typedef struct clientInfo{
 	unsigned int socket;
 }clientInfo;
 
+pthread_mutex_t mutex;
 clientInfo client_arr[MAX_CLIENTS];
 int cltIdx=0;
 int sockfd;
@@ -50,6 +51,7 @@ void whisperClient(int s)
 	write(client_arr[dst_idx].socket,whisper,strlen(whisper));
 
 }
+
 void sendHowto(int s)
 {
 	char buf[BUF_SIZE];
@@ -140,6 +142,8 @@ void* thread_main(void* arg)
 	char cltname[12];
 	free(arg);
 	char* body;
+
+	pthread_mutex_init(&mutex,NULL);
 	while(1)
 	{
 		if((size = read(s,buf,BUF_SIZE))<=0) break;
@@ -167,10 +171,12 @@ void* thread_main(void* arg)
 		}
 		else if(type == 'c')
 		{
+			pthread_mutex_lock(&mutex);
 			printf("cltIdx: %d\n",cltIdx);
 			cltNum=addPeer(s,buf);
 			cltNum--;
 			sendClients(s,cltNum);
+			pthread_mutex_unlock(&mutex);
 		}
 		else if(type =='l')
 		{
@@ -182,6 +188,7 @@ void* thread_main(void* arg)
 		}
 		printf("Host: %s, size: %d\n",buf,size);
 		memset(buf,0,BUF_SIZE);
+		type='\0';
 	}
 	subPeer(s,cltNum);
 	close(s);

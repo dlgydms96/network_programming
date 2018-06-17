@@ -31,12 +31,12 @@ void* thread_send(void* arg)
 	char buf[BUF_SIZE];
 	char output[BUF_SIZE];
 	char name[10];
-	char header[3];
+	char header[4];
 	ConnectToServer((char*)arg);
 	while((size = read(0,buf,BUF_SIZE))>0){
-		strncpy(header,buf,3);
-		header[2]='\0';
-		printf("header: %s\n",header);
+		strncpy(header,buf,4);
+		header[3]='\0';
+//		printf("header:%s\n",header);
 		sprintf(output,"%d",size);
 		if(strcmp(buf,"/l\n")==0)
 		{
@@ -44,7 +44,7 @@ void* thread_send(void* arg)
 			strcat(output,"l");
 			send(sockfd,output,strlen(output),0);
 		}
-		else if(strcmp(header,"/w")==0)
+		else if(strcmp(header,"/w ")==0)
 		{
 			sprintf(output,"%d",strlen("w"));
 			strcat(output,"w");
